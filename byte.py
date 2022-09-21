@@ -49,13 +49,13 @@ class byte():
             else:
                 self._data["data"].append(bit())
 
-        if ((self._parity % 2) == 1):
+        if (self._parity % 2) == 1:
             if self._parity >= 2:
                 self._data["parity"] = bit(parity=True)
             else:
                 self._data["parity"] = bit()
             # set parity bit to true since 0 is even
-            self._data["parity"].flip_bit()
+            self._data["parity"].bit_flip()
 
         if self._parity:
             # define parity check if parity is enabled
@@ -71,8 +71,71 @@ class byte():
                 for each in self._data["data"]:
                     if each.get_bit():
                         num_1s += 1
-                if ((num_1s % 2) == 1):
+                if (num_1s % 2) == 1:
                     return not self._data["parity"].get_bit()
                 return self._data["parity"].get_bit()
 
             self.check_parity = check_parity
+
+            def recalculate_parity():
+                """recalculate parity bit value"""
+                num_1s = 0
+                for each in self._data["data"]:
+                    if each.get_bit():
+                        num_1s += 1
+                if (num_1s % 2) == 1:
+                    self._data["parity"].set_bit(False)
+                else:
+                    self._data["parity"].set_bit(True)
+
+            self.recalculate_parity = recalculate_parity
+
+
+    def get_byte(self, override_parity=False):
+        """Get state of all bits, excluding parity
+
+        Setting override_parity to True bypasses parity checks in order
+        to attempt data repair or ignore issues
+        """
+        if self._parity and not override_parity:
+            if not self.check_parity():
+                raise ValueError("Parity issue detected!")
+        output = []
+        for each in self._data["data"]:
+            output.append(each.get_bit(override_parity=override_parity))
+        return output
+
+    def set_bit(self, index, value):
+        """Change a single bit at the given index"""
+        new_value = bool(value)
+        self._data["data"][index].set_bit(value)
+        if self._parity:
+            self.recalculate_parity()
+
+    def get_bit(self, index, override_parity=False):
+        """get the value of a single bit at a given index"""
+        op = bool(override_parity)
+        return self._data["data"][index].get_bit(override_parity=op)
+
+    def set_byte(self, value, endian=True):
+        """Set entire byte's data at once.
+
+        value should be a list up to 8 values long, and will be converted to
+        booleans before writing. Missing values will be filled with 0s.
+
+        endian controls whether data is stored on the byte-level in
+        little-endian or big-endian format. True is little-endian and the
+        default, False is big-endian
+        """
+        filler = 8 - len(value)
+        data = []
+        # Fill missing data with 0s
+        for each in range(0, filler):
+            data.append(False)
+        for each in value:
+            if endian:
+                data.insert(0, bool(each))
+            else:
+                data.append(bool(each))
+        for each in enumerate(data):
+            self.set_bit(each[0], each[1])

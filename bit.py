@@ -57,13 +57,16 @@ class bit():
 
             self.check_parity = check_parity
 
-    def get_bit(self):
+    def get_bit(self, override_parity=False):
         """Get current value of bit
 
         If parity was set to True, if the parity bit and data bit do not match,
-        a ValueError is raised
+        a ValueError is raised.
+
+        Setting override_parity to True bypasses parity checks in order
+        to attempt data repair or ignore issues
         """
-        if self._parity:
+        if self._parity and not override_parity:
             if self._data["data"] == self._data["parity"]:
                 return self._data["data"]
             raise ValueError("Parity bit does not match Value Bit!")
